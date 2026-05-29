@@ -150,6 +150,33 @@ const SCENARIOS: Scenario[] = [
     lon: BLR_LON,
     speedup: 1,
   },
+
+  // --- VELOX counter-drone scenarios ---
+  {
+    id: 'velox',
+    name: 'VELOX Interceptor',
+    description: 'VELOX counter-drone interceptor in Gazebo. Single drone, ARMING_CHECK disabled.',
+    preset: 'velox-interceptor',
+    drones: 1,
+    lat: BLR_LAT,
+    lon: BLR_LON,
+    speedup: 1,
+    withGazebo: true,
+    gazeboWorld: 'multi-copter',
+  },
+
+  {
+    id: 'velox-2drone',
+    name: 'VELOX 2-Drone (Interceptor + Target)',
+    description: 'Two drones: interceptor (sysId 1) + target UAV (sysId 2). Gazebo multi-copter world.',
+    preset: 'velox-interceptor',
+    drones: 2,
+    lat: BLR_LAT,
+    lon: BLR_LON,
+    speedup: 1,
+    withGazebo: true,
+    gazeboWorld: 'multi-copter',
+  },
 ];
 
 // ---------------------------------------------------------------------------

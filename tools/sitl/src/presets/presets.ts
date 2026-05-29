@@ -387,6 +387,49 @@ const PRESETS: BuildPreset[] = [
       },
     },
   },
+  // ── VELOX Counter-Drone Interceptor ─────────────────────────
+  {
+    id: "velox-interceptor",
+    name: "VELOX Interceptor",
+    description: "Counter-drone interceptor platform. GPS + compass, Gazebo-ready. ARMING_CHECK disabled for SITL.",
+    category: "reference",
+    specs: {
+      propSize: '7"',
+      motorSize: "2806.5",
+      motorKv: 1300,
+      cells: 6,
+      batteryMah: 4200,
+      auwGrams: 900,
+      flightTimeMin: 25,
+      hasGps: true,
+      hasCompass: true,
+      hasRangefinder: false,
+      hasCompute: true,
+    },
+    components: [
+      { type: "fc", name: "CUAV 7 Nano", count: 1, details: { firmware: "ArduPilot 4.5", mcu: "STM32H743" } },
+      { type: "compute", name: "Jetson Orin Nano Super", count: 1, details: { tops: "67 TOPS", ram: "8GB" } },
+      { type: "camera", name: "AI-DS1 Gimbal (IR+1080p)", count: 1, details: { stream: "RTSP" } },
+      { type: "gps", name: "u-blox M10 GPS", count: 1, details: { type: "GNSS" } },
+      { type: "motor", name: "2806.5 1300KV", count: 4, details: { kv: "1300", size: "2806.5" } },
+      { type: "battery", name: "LiPo 6S 4200mAh", count: 1, details: { cells: "6S", capacity: "4200mAh" } },
+    ],
+    sitl: {
+      vehicle: "ArduCopter",
+      frame: "gazebo-iris",
+      paramOverrides: {
+        FRAME_CLASS: 1,
+        FRAME_TYPE: 1,
+        ARMING_CHECK: 0,
+        GPS_TYPE: 1,
+        COMPASS_USE: 1,
+        BATT_CAPACITY: 4200,
+        BATT_N_CELLS: 6,
+        WPNAV_SPEED: 1500,
+        WPNAV_ACCEL: 500,
+      },
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

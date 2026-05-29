@@ -18,6 +18,7 @@ const PRESETS = [
   { id: 'xclass-racer', name: 'X-Class Racer', desc: '13" prop high speed racing quad' },
   { id: 'tiny-whoop', name: 'Tiny Whoop', desc: 'Sub-100g micro whoop, 65mm, indoor only' },
   { id: '7in-ados-reference', name: '7" ADOS Reference', desc: 'Reference platform — full sensor suite + companion compute' },
+  { id: 'velox-interceptor', name: 'VELOX Interceptor', desc: 'Counter-drone interceptor — GPS, Gazebo-ready, ARMING_CHECK=0' },
 ] as const;
 
 interface SitlOptions {
@@ -32,6 +33,11 @@ interface SitlOptions {
   withGcs?: boolean;
   listPresets?: boolean;
   noDashboard?: boolean;
+  withGazebo?: boolean;
+  gazeboWorld?: string;
+  gazeboHeadless?: boolean;
+  scenario?: string;
+  listScenarios?: boolean;
 }
 
 function printPresetTable(): void {
@@ -55,6 +61,17 @@ export async function sitlCommand(opts: SitlOptions): Promise<void> {
   if (opts.listPresets) {
     printPresetTable();
     process.exit(0);
+  }
+
+  // List scenarios and exit (pass-through to SITL tool)
+  if (opts.listScenarios) {
+    const { spawnForwarded } = await import('../lib/process.js');
+    const code = await spawnForwarded({
+      command: 'npx',
+      args: ['tsx', SITL_INDEX, '--list-scenarios'],
+      cwd: SITL_TOOL,
+    });
+    process.exit(code);
   }
 
   printBanner();
@@ -182,11 +199,18 @@ export async function sitlCommand(opts: SitlOptions): Promise<void> {
   if (opts.wind) sitlArgs.push('--wind', opts.wind);
   if (opts.vehicle) sitlArgs.push('--vehicle', opts.vehicle);
   if (opts.noDashboard) sitlArgs.push('--no-dashboard');
+  if (opts.withGazebo) sitlArgs.push('--with-gazebo');
+  if (opts.gazeboWorld) sitlArgs.push('--gazebo-world', opts.gazeboWorld);
+  if (opts.gazeboHeadless) sitlArgs.push('--gazebo-headless');
+  if (opts.scenario) sitlArgs.push('--scenario', opts.scenario);
 
   const presetInfo = PRESETS.find((pr) => pr.id === preset);
   console.log();
   p.log.info(`Preset: ${pc.cyan(presetInfo?.name ?? preset)}`);
   p.log.info(`Drones: ${pc.cyan(String(drones))} | Speed: ${pc.cyan(`${speedup}x`)} | WS Port: ${pc.cyan(String(wsPort))}`);
+  if (opts.withGazebo) {
+    p.log.info(`Gazebo: ${pc.cyan(opts.gazeboWorld ?? 'multi-copter')}${opts.gazeboHeadless ? pc.dim(' (headless)') : ''}`);
+  }
   if (withGcs) {
     p.log.info(`GCS dev server on port ${pc.cyan('4000')}`);
   }
@@ -243,6 +267,11 @@ export function registerSitl(program: Command): void {
     .option('--with-gcs', 'Also start GCS dev server')
     .option('--list-presets', 'List available presets and exit')
     .option('--no-dashboard', 'Disable SITL terminal dashboard')
+    .option('--with-gazebo', 'Launch with Gazebo 3D visualization')
+    .option('--gazebo-world <name>', 'Gazebo world file (without .sdf)', 'multi-copter')
+    .option('--gazebo-headless', 'Run Gazebo without GUI (server only)')
+    .option('--scenario <id>', 'Use a named test scenario')
+    .option('--list-scenarios', 'List available test scenarios and exit')
     .action(async (opts) => {
       await sitlCommand({
         drones: opts.drones ? parseInt(opts.drones, 10) : undefined,
@@ -256,6 +285,11 @@ export function registerSitl(program: Command): void {
         withGcs: opts.withGcs,
         listPresets: opts.listPresets,
         noDashboard: opts.dashboard === false, // commander negates --no- flags
+        withGazebo: opts.withGazebo,
+        gazeboWorld: opts.gazeboWorld,
+        gazeboHeadless: opts.gazeboHeadless,
+        scenario: opts.scenario,
+        listScenarios: opts.listScenarios,
       });
     });
 }

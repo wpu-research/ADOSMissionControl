@@ -15,6 +15,7 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cmdDroneStatusApi } from "@/lib/community-api-drones";
 
 const QUICK_PRESETS = [
+  { label: "VELOX", url: "ws://localhost:5760" },
   { label: "mavlink-router", url: "ws://localhost:14550" },
   { label: "SITL #1", url: "ws://localhost:5760" },
   { label: "SITL #2", url: "ws://localhost:5770" },

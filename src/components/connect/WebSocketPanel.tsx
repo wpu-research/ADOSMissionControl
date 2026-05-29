@@ -15,9 +15,8 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cmdDroneStatusApi } from "@/lib/community-api-drones";
 
 const QUICK_PRESETS = [
-  { label: "VELOX", url: "ws://localhost:5760" },
+  { label: "VELOX", url: "ws://localhost:8765" },
   { label: "mavlink-router", url: "ws://localhost:14550" },
-  { label: "SITL #1", url: "ws://localhost:5760" },
   { label: "SITL #2", url: "ws://localhost:5770" },
   { label: "SITL #3", url: "ws://localhost:5780" },
   { label: "SITL #4", url: "ws://localhost:5790" },
@@ -198,7 +197,7 @@ export function WebSocketPanel({
       <div className="flex flex-wrap gap-1.5">
         {QUICK_PRESETS.map((preset) => (
           <button
-            key={preset.url}
+            key={preset.label}
             onClick={() => handleUrlChange(preset.url)}
             className={`px-2 py-1 text-[10px] font-mono border transition-colors cursor-pointer ${
               effectiveUrl === preset.url

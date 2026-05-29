@@ -62,6 +62,7 @@ const BACKOFF_FACTOR = 2;
 
 interface TcpHandle {
   instance: TcpInstance;
+  wsPort: number;
   socket: net.Socket | null;
   reconnectMs: number;
   reconnectTimer: ReturnType<typeof setTimeout> | null;
@@ -91,9 +92,11 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
 
   /** Start per-drone WebSocket servers and connect to all TCP instances. */
   start(): void {
-    for (const instance of this.config.tcpInstances) {
-      // Each drone gets its own WebSocket server on its TCP port
-      const wss = new WebSocketServer({ port: instance.port });
+    for (let i = 0; i < this.config.tcpInstances.length; i++) {
+      const instance = this.config.tcpInstances[i];
+      // WS server on wsPort+i (separate from TCP port to avoid bind conflict)
+      const wsPort = this.config.wsPort + i;
+      const wss = new WebSocketServer({ port: wsPort });
 
       wss.on('connection', (ws, req) => {
         const remoteAddress = req.socket.remoteAddress ?? 'unknown';
@@ -122,11 +125,12 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
         this.emit('error', err);
       });
 
-      this.wssMap.set(instance.port, wss);
+      this.wssMap.set(wsPort, wss);
 
       // Initiate TCP connection for this drone
       const handle: TcpHandle = {
         instance,
+        wsPort,
         socket: null,
         reconnectMs: INITIAL_RECONNECT_MS,
         reconnectTimer: null,
@@ -180,7 +184,7 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
 
     socket.on('data', (data: Buffer) => {
       // SITL → GCS: broadcast only to this drone's WS clients
-      this.broadcastToWs(port, data);
+      this.broadcastToWs(handle.wsPort, data);
       this.emit('data', { sysId, data });
     });
 

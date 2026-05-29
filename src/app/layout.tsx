@@ -16,8 +16,8 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "ADOS Mission Control",
-  description: "Open-source Ground Control Station by Altnautica",
+  title: "VELOX GCS",
+  description: "VELOX Counter-Drone Ground Control Station",
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",

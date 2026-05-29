@@ -39,6 +39,8 @@ interface SitlOptions {
   scenario?: string;
   listScenarios?: boolean;
   adosMode?: boolean;
+  autopilot?: 'ardupilot' | 'px4';
+  px4Home?: string;
 }
 
 function printPresetTable(): void {
@@ -77,9 +79,26 @@ export async function sitlCommand(opts: SitlOptions): Promise<void> {
 
   printBanner();
 
-  // 1. Check ArduPilot installed
+  // 1. Check autopilot dependency
+  if (opts.autopilot === 'px4') {
+    // PX4 binary check — fast fail before wasting time on interactive prompts
+    const { existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { homedir } = await import('node:os');
+    const px4Home = opts.px4Home ?? join(homedir(), 'PX4-Autopilot');
+    const px4Bin = join(px4Home, 'build/px4_sitl_default/bin/px4');
+    if (!existsSync(px4Bin)) {
+      p.log.error(`PX4 binary not found: ${px4Bin}`);
+      p.log.info(`Build PX4 first: cd ${px4Home} && make px4_sitl_default`);
+      process.exit(1);
+    }
+    p.log.success(`PX4 binary found: ${px4Bin}`);
+  }
+
   const ardupilotCheck = checkArdupilot();
-  if (!ardupilotCheck.ok) {
+  if (opts.autopilot === 'px4') {
+    // Skip ArduPilot check entirely for PX4 mode
+  } else if (!ardupilotCheck.ok) {
     p.log.warn('ArduPilot SITL not found at ~/.ardupilot');
     const install = await p.confirm({
       message: 'Would you like to set up ArduPilot SITL now?',
@@ -205,6 +224,8 @@ export async function sitlCommand(opts: SitlOptions): Promise<void> {
   if (opts.gazeboHeadless) sitlArgs.push('--gazebo-headless');
   if (opts.scenario) sitlArgs.push('--scenario', opts.scenario);
   if (opts.adosMode) sitlArgs.push('--ados-mode');
+  if (opts.autopilot) sitlArgs.push('--autopilot', opts.autopilot);
+  if (opts.px4Home) sitlArgs.push('--px4', opts.px4Home);
 
   const presetInfo = PRESETS.find((pr) => pr.id === preset);
   console.log();
@@ -275,6 +296,8 @@ export function registerSitl(program: Command): void {
     .option('--scenario <id>', 'Use a named test scenario')
     .option('--list-scenarios', 'List available test scenarios and exit')
     .option('--ados-mode', 'Start agent HTTP shim (port 8080) + MAVLink WS on 8765 for ADOS GCS')
+    .option('--autopilot <stack>', 'Autopilot stack: ardupilot (default) or px4')
+    .option('--px4 <path>', 'Path to PX4-Autopilot source (default: ~/PX4-Autopilot)')
     .action(async (opts) => {
       await sitlCommand({
         drones: opts.drones ? parseInt(opts.drones, 10) : undefined,
@@ -287,13 +310,15 @@ export function registerSitl(program: Command): void {
         vehicle: opts.vehicle,
         withGcs: opts.withGcs,
         listPresets: opts.listPresets,
-        noDashboard: opts.dashboard === false, // commander negates --no- flags
+        noDashboard: opts.dashboard === false,
         withGazebo: opts.withGazebo,
         gazeboWorld: opts.gazeboWorld,
         gazeboHeadless: opts.gazeboHeadless,
         scenario: opts.scenario,
         listScenarios: opts.listScenarios,
         adosMode: opts.adosMode,
+        autopilot: opts.autopilot as 'ardupilot' | 'px4' | undefined,
+        px4Home: opts.px4,
       });
     });
 }

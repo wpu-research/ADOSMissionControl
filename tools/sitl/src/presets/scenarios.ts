@@ -20,6 +20,8 @@ export interface Scenario {
   gazeboWorld?: string;
   /** Start agent HTTP shim (port 8080) + serve MAVLink WS on 8765 for ADOS GCS. */
   adosMode?: boolean;
+  /** Autopilot stack: 'ardupilot' (default) or 'px4'. */
+  autopilot?: 'ardupilot' | 'px4';
 }
 
 // Bangalore real-terrain coordinates (from gazebo_terrain_generator)
@@ -166,6 +168,7 @@ const SCENARIOS: Scenario[] = [
     withGazebo: true,
     gazeboWorld: 'multi-copter',
     adosMode: true,
+    autopilot: 'ardupilot',
   },
 
   {
@@ -180,6 +183,19 @@ const SCENARIOS: Scenario[] = [
     withGazebo: true,
     gazeboWorld: 'multi-copter',
     adosMode: true,
+    autopilot: 'ardupilot',
+  },
+
+  {
+    id: 'velox-px4',
+    name: 'VELOX PX4 (Interceptor)',
+    description: 'VELOX interceptor with PX4 + Gazebo Harmonic. BSD-3 licensed autopilot stack.',
+    drones: 1,
+    lat: BLR_LAT,
+    lon: BLR_LON,
+    speedup: 1,
+    adosMode: true,
+    autopilot: 'px4',
   },
 ];
 

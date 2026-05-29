@@ -192,10 +192,10 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
         {/* Left — Wordmark */}
         <div className={cn("flex items-baseline gap-1.5", isElectron && !isLinux && "[-webkit-app-region:no-drag]")}>
           <span className="font-display uppercase tracking-[0.25em] text-sm font-semibold text-accent-primary">
-            ADOS
+            VELOX
           </span>
           <span className="text-[10px] uppercase tracking-widest text-text-tertiary font-medium">
-            {t("missionControl")}
+            GCS
           </span>
           {demo && (
             <Tooltip content={t("exitDemo")} position="bottom">

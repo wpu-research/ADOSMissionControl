@@ -234,7 +234,10 @@ npm run cli dev          # Dev server (port 4000)
 npm run cli dev -a       # Dev server + MQTT + Video Relay via Docker
 npm run cli dev --convex # Dev server + Convex dev backend
 npm run cli demo         # Demo mode — 5 simulated drones
-npm run cli sitl         # Launch ArduPilot SITL + WebSocket bridge
+npm run cli sitl                              # Launch ArduPilot SITL + WebSocket bridge
+npm run cli sitl --autopilot px4              # Launch PX4 SITL + Gazebo + UDP bridge
+npm run cli sitl --scenario velox --with-gcs  # VELOX counter-drone scenario (ArduPilot)
+npm run cli sitl --scenario velox-px4 --with-gcs  # VELOX scenario with PX4 stack
 
 # Services (Docker)
 npm run cli services         # Interactive service manager
@@ -255,7 +258,7 @@ npm run cli info         # System check (Node, Docker, ports, security)
 
 ## Connecting to Hardware
 
-**WebSocket:** Connect to any MAVLink-over-WebSocket endpoint. Use `npm run cli sitl` to launch ArduPilot SITL with the bridge tool. See [`tools/sitl/`](tools/sitl/).
+**WebSocket:** Connect to any MAVLink-over-WebSocket endpoint. Use `npm run cli sitl` to launch ArduPilot SITL with the bridge tool, or `--autopilot px4` for PX4 + Gazebo. See [`tools/sitl/`](tools/sitl/).
 
 **WebSerial (USB):** Plug in your FC, open Mission Control in Chrome 89+, click connect, pick the port. No drivers needed.
 
@@ -333,7 +336,7 @@ All variables are optional. Set them with `npm run cli config` or edit `.env.loc
 
 | Tool | Path | Description |
 |------|------|-------------|
-| SITL launcher | `tools/sitl/` | ArduPilot SITL + TCP-to-WebSocket bridge |
+| SITL launcher | `tools/sitl/` | ArduPilot SITL (TCP→WS) and PX4 SITL + Gazebo (UDP→WS) bridge |
 | MQTT bridge | `tools/mqtt-bridge/` | Mosquitto broker + MQTT-to-Convex bridge (Docker Compose) |
 | Video relay | `tools/video-relay/` | RTSP-to-WebSocket fMP4 relay via ffmpeg (Docker Compose) |
 

@@ -3,7 +3,9 @@
 
 import { SitlLauncher, type SitlConfig } from './launcher/sitl.js';
 import { GazeboSitlLauncher } from './launcher/gazebo-sitl.js';
+import { Px4SitlLauncher } from './launcher/px4-sitl.js';
 import { TcpWsBridge } from './bridge/tcp-ws.js';
+import { UdpWsBridge } from './bridge/udp-ws.js';
 import { AgentShim } from './bridge/agent-shim.js';
 import {
   Dashboard,
@@ -36,6 +38,8 @@ interface CliArgs {
   gazeboWorld: string;
   gazeboHeadless: boolean;
   adosMode: boolean;
+  autopilot: 'ardupilot' | 'px4';
+  px4Home?: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -53,6 +57,7 @@ function parseArgs(argv: string[]): CliArgs {
     gazeboWorld: 'multi-copter',
     gazeboHeadless: false,
     adosMode: false,
+    autopilot: 'ardupilot',
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -123,6 +128,18 @@ function parseArgs(argv: string[]): CliArgs {
         break;
       case '--ados-mode':
         args.adosMode = true;
+        break;
+      case '--autopilot':
+        if (next !== 'ardupilot' && next !== 'px4') {
+          console.error(`--autopilot must be 'ardupilot' or 'px4', got: ${next}`);
+          process.exit(1);
+        }
+        args.autopilot = next;
+        i++;
+        break;
+      case '--px4':
+        args.px4Home = next;
+        i++;
         break;
       case '--help':
       case '-h':
@@ -266,6 +283,7 @@ async function main(): Promise<void> {
     if (scenario.withGazebo) cli.withGazebo = true;
     if (scenario.gazeboWorld) cli.gazeboWorld = scenario.gazeboWorld;
     if (scenario.adosMode) cli.adosMode = true;
+    if (scenario.autopilot) cli.autopilot = scenario.autopilot;
   }
 
   // --- Resolve preset (if specified) ---------------------------------------
@@ -317,13 +335,19 @@ async function main(): Promise<void> {
     ...(cli.ardupilotHome ? { ardupilotHome: cli.ardupilotHome } : {}),
   };
 
-  const launcher = cli.withGazebo
-    ? new GazeboSitlLauncher({
-        ...baseLauncherConfig,
-        world: cli.gazeboWorld,
-        headless: cli.gazeboHeadless,
+  const launcher = cli.autopilot === 'px4'
+    ? new Px4SitlLauncher({
+        lat: cli.lat,
+        lon: cli.lon,
+        ...(cli.px4Home ? { px4Home: cli.px4Home } : {}),
       })
-    : new SitlLauncher(baseLauncherConfig);
+    : cli.withGazebo
+      ? new GazeboSitlLauncher({
+          ...baseLauncherConfig,
+          world: cli.gazeboWorld,
+          headless: cli.gazeboHeadless,
+        })
+      : new SitlLauncher(baseLauncherConfig);
 
   launcher.on('stdout', (line: string) => {
     // Only log interesting lines, filter out noisy sim output
@@ -359,21 +383,37 @@ async function main(): Promise<void> {
   }
 
   for (const inst of instances) {
-    log(`Drone ${inst.sysId} ready on TCP port ${inst.tcpPort} (pid ${inst.pid})`);
+    if (cli.autopilot === 'px4') {
+      const px4Inst = inst as import('./launcher/px4-sitl.js').Px4SitlInstance;
+      log(`Drone ${px4Inst.sysId} ready on UDP port ${px4Inst.udpPort} (pid ${px4Inst.pid})`);
+    } else {
+      const apInst = inst as import('./launcher/sitl.js').SitlInstance;
+      log(`Drone ${apInst.sysId} ready on TCP port ${apInst.tcpPort} (pid ${apInst.pid})`);
+    }
   }
 
-  // --- TCP→WS Bridge ------------------------------------------------------
-  // In ADOS mode, serve MAVLink WS on 8765 (ADOS agent convention) so the
-  // GCS can auto-derive ws://localhost:8765/ from the agent URL.
-  const mavlinkWsPort = cli.adosMode ? 8765 : cli.wsPort;
-  const bridge = new TcpWsBridge({
-    wsPort: mavlinkWsPort,
-    tcpInstances: instances.map((inst) => ({
-      host: '127.0.0.1',
-      port: inst.tcpPort,
-      sysId: inst.sysId,
-    })),
-  });
+  // --- MAVLink→WS Bridge --------------------------------------------------
+  // ADOS mode: MAVLink WS on 8765 (agent convention).
+  // PX4: UDP↔WS bridge (PX4 sends MAVLink datagrams, no TCP).
+  // ArduPilot: TCP→WS bridge (ArduPilot SITL opens a TCP server).
+  const mavlinkWsPort = cli.adosMode ? 8765 : cli.wsPort + 1;
+
+  const bridge = cli.autopilot === 'px4'
+    ? new UdpWsBridge({
+        wsPort: mavlinkWsPort,
+        udpInstances: (instances as import('./launcher/px4-sitl.js').Px4SitlInstance[]).map((inst) => ({
+          sysId: inst.sysId,
+          udpPort: inst.udpPort,
+        })),
+      })
+    : new TcpWsBridge({
+        wsPort: mavlinkWsPort,
+        tcpInstances: (instances as import('./launcher/sitl.js').SitlInstance[]).map((inst) => ({
+          host: '127.0.0.1',
+          port: inst.tcpPort,
+          sysId: inst.sysId,
+        })),
+      });
 
   // --- Agent HTTP Shim (ADOS mode only) ------------------------------------
   if (cli.adosMode) {
@@ -450,7 +490,7 @@ async function main(): Promise<void> {
   } else {
     log('MAVLink connections:');
     for (const inst of instances) {
-      log(`  Drone #${inst.sysId}:  ws://localhost:${inst.tcpPort}`);
+      log(`  Drone #${inst.sysId}:  ws://localhost:${mavlinkWsPort}`);
     }
   }
   if (cli.withGazebo) {

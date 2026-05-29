@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { FlightModeSelector } from "@/components/shared/flight-mode-selector";
 import { ActionDialogs } from "./action-dialogs";
+import { KeyboardFlightControl } from "./KeyboardFlightControl";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore } from "@/stores/checklist-store";
@@ -28,6 +29,7 @@ export function ActionsPanel() {
   const previousMode = useDroneStore((s) => s.previousMode);
   const setFlightMode = useDroneStore((s) => s.setFlightMode);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
 
   const [showArmConfirm, setShowArmConfirm] = useState(false);
   const [showDisarmConfirm, setShowDisarmConfirm] = useState(false);
@@ -258,6 +260,11 @@ export function ActionsPanel() {
         {/* Follow-me mode */}
         {isArmed && hasAutonomousFlight && (
           <FollowMeButton />
+        )}
+
+        {/* Keyboard flight control */}
+        {selectedDroneId && (
+          <KeyboardFlightControl droneId={selectedDroneId} />
         )}
       </div>
 

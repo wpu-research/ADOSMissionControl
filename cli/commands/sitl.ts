@@ -38,6 +38,7 @@ interface SitlOptions {
   gazeboHeadless?: boolean;
   scenario?: string;
   listScenarios?: boolean;
+  adosMode?: boolean;
 }
 
 function printPresetTable(): void {
@@ -203,6 +204,7 @@ export async function sitlCommand(opts: SitlOptions): Promise<void> {
   if (opts.gazeboWorld) sitlArgs.push('--gazebo-world', opts.gazeboWorld);
   if (opts.gazeboHeadless) sitlArgs.push('--gazebo-headless');
   if (opts.scenario) sitlArgs.push('--scenario', opts.scenario);
+  if (opts.adosMode) sitlArgs.push('--ados-mode');
 
   const presetInfo = PRESETS.find((pr) => pr.id === preset);
   console.log();
@@ -272,6 +274,7 @@ export function registerSitl(program: Command): void {
     .option('--gazebo-headless', 'Run Gazebo without GUI (server only)')
     .option('--scenario <id>', 'Use a named test scenario')
     .option('--list-scenarios', 'List available test scenarios and exit')
+    .option('--ados-mode', 'Start agent HTTP shim (port 8080) + MAVLink WS on 8765 for ADOS GCS')
     .action(async (opts) => {
       await sitlCommand({
         drones: opts.drones ? parseInt(opts.drones, 10) : undefined,
@@ -290,6 +293,7 @@ export function registerSitl(program: Command): void {
         gazeboHeadless: opts.gazeboHeadless,
         scenario: opts.scenario,
         listScenarios: opts.listScenarios,
+        adosMode: opts.adosMode,
       });
     });
 }

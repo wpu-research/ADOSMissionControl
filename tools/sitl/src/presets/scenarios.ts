@@ -18,6 +18,8 @@ export interface Scenario {
   withGazebo?: boolean;
   /** Gazebo world file name (without .sdf). */
   gazeboWorld?: string;
+  /** Start agent HTTP shim (port 8080) + serve MAVLink WS on 8765 for ADOS GCS. */
+  adosMode?: boolean;
 }
 
 // Bangalore real-terrain coordinates (from gazebo_terrain_generator)
@@ -163,6 +165,7 @@ const SCENARIOS: Scenario[] = [
     speedup: 1,
     withGazebo: true,
     gazeboWorld: 'multi-copter',
+    adosMode: true,
   },
 
   {
@@ -176,6 +179,7 @@ const SCENARIOS: Scenario[] = [
     speedup: 1,
     withGazebo: true,
     gazeboWorld: 'multi-copter',
+    adosMode: true,
   },
 ];
 

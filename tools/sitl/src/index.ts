@@ -4,6 +4,7 @@
 import { SitlLauncher, type SitlConfig } from './launcher/sitl.js';
 import { GazeboSitlLauncher } from './launcher/gazebo-sitl.js';
 import { TcpWsBridge } from './bridge/tcp-ws.js';
+import { AgentShim } from './bridge/agent-shim.js';
 import {
   Dashboard,
   parseHeartbeat,
@@ -34,6 +35,7 @@ interface CliArgs {
   withGazebo: boolean;
   gazeboWorld: string;
   gazeboHeadless: boolean;
+  adosMode: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -50,6 +52,7 @@ function parseArgs(argv: string[]): CliArgs {
     withGazebo: false,
     gazeboWorld: 'multi-copter',
     gazeboHeadless: false,
+    adosMode: false,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -117,6 +120,9 @@ function parseArgs(argv: string[]): CliArgs {
         break;
       case '--gazebo-headless':
         args.gazeboHeadless = true;
+        break;
+      case '--ados-mode':
+        args.adosMode = true;
         break;
       case '--help':
       case '-h':
@@ -259,6 +265,7 @@ async function main(): Promise<void> {
     if (scenario.vehicle) cli.vehicle = scenario.vehicle;
     if (scenario.withGazebo) cli.withGazebo = true;
     if (scenario.gazeboWorld) cli.gazeboWorld = scenario.gazeboWorld;
+    if (scenario.adosMode) cli.adosMode = true;
   }
 
   // --- Resolve preset (if specified) ---------------------------------------
@@ -356,14 +363,34 @@ async function main(): Promise<void> {
   }
 
   // --- TCP→WS Bridge ------------------------------------------------------
+  // In ADOS mode, serve MAVLink WS on 8765 (ADOS agent convention) so the
+  // GCS can auto-derive ws://localhost:8765/ from the agent URL.
+  const mavlinkWsPort = cli.adosMode ? 8765 : cli.wsPort;
   const bridge = new TcpWsBridge({
-    wsPort: cli.wsPort,
+    wsPort: mavlinkWsPort,
     tcpInstances: instances.map((inst) => ({
       host: '127.0.0.1',
       port: inst.tcpPort,
       sysId: inst.sysId,
     })),
   });
+
+  // --- Agent HTTP Shim (ADOS mode only) ------------------------------------
+  if (cli.adosMode) {
+    const shim = new AgentShim({
+      httpPort: 8080,
+      mavlinkWsPort,
+      drones: cli.drones,
+      startedAt: Date.now(),
+    });
+    shim.on('ready', ({ httpPort, mavlinkWsPort: wsPort }: { httpPort: number; mavlinkWsPort: number }) => {
+      log(`Agent shim: http://localhost:${httpPort}  →  ws://localhost:${wsPort}/`);
+    });
+    shim.on('error', (err: Error) => {
+      log(`Agent shim error: ${err.message}`);
+    });
+    shim.start();
+  }
 
   bridge.on('tcp-connected', ({ sysId, port }) => {
     log(`TCP bridge connected to 127.0.0.1:${port} (sysid=${sysId})`);
@@ -416,9 +443,15 @@ async function main(): Promise<void> {
   log('');
   log('=== ADOS SITL Ready ===');
   log('');
-  log('MAVLink connections:');
-  for (const inst of instances) {
-    log(`  Drone #${inst.sysId}:  ws://localhost:${inst.tcpPort}`);
+  if (cli.adosMode) {
+    log('Connect GCS → Add drone → Agent URL:');
+    log('  http://localhost:8080');
+    log(`  MAVLink WS auto-derived: ws://localhost:${mavlinkWsPort}/`);
+  } else {
+    log('MAVLink connections:');
+    for (const inst of instances) {
+      log(`  Drone #${inst.sysId}:  ws://localhost:${inst.tcpPort}`);
+    }
   }
   if (cli.withGazebo) {
     log('');

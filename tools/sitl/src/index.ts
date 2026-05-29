@@ -331,7 +331,11 @@ async function main(): Promise<void> {
     vehicle: cli.vehicle,
     wind: cli.wind,
     baseTcpPort: cli.wsPort,
-    extraArgs: presetExtraArgs.length > 0 ? presetExtraArgs : undefined,
+    // ADOS mode: add UDP :14550 output so mission scripts can connect alongside the WS bridge
+    extraArgs: [
+      ...presetExtraArgs,
+      ...(cli.adosMode ? ['--out=127.0.0.1:14550'] : []),
+    ].filter(Boolean) as string[],
     ...(cli.ardupilotHome ? { ardupilotHome: cli.ardupilotHome } : {}),
   };
 
